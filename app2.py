@@ -32,6 +32,13 @@ def crop_and_preprocess(image, y1=345, y2=795):
     
     return Image.fromarray(cropped)
 
+# Function to find texts near indicators
+def find_texts_near_indicator(results, indicator_text):
+    for result in results:
+        if indicator_text in result['text']:
+            return result['text']
+    return None
+    
 def run_tesseract(image):
     # Convert image to OpenCV format
     img_np = np.array(image)
@@ -95,10 +102,3 @@ if uploaded_image is not None:
             # Show bounding boxes on the image
             img_with_bboxes = draw_bboxes(image, results)
             st.image(img_with_bboxes, caption='Processed Image with Bounding Boxes', use_column_width=True)
-
-# Function to find texts near indicators
-def find_texts_near_indicator(results, indicator_text):
-    for result in results:
-        if indicator_text in result['text']:
-            return result['text']
-    return None
