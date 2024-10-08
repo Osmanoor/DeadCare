@@ -1,104 +1,109 @@
 import streamlit as st
 from PIL import Image, ImageDraw
 import pytesseract
-from pytesseract import Output
 import numpy as np
-import pandas as pd
-import cv2
 
-# Configure Tesseract path if needed (for Windows)
-# pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
-
-def draw_bboxes(image, results):
+# Function to draw bounding boxes around sentences
+def draw_bboxes(image, sentence_results):
     img_draw = image.convert('RGB')
     draw = ImageDraw.Draw(img_draw)
-    
-    for result in results:
-        bbox = result['box']
-        text = result['text']
-        draw.rectangle([bbox['x'], bbox['y'], bbox['x'] + bbox['w'], bbox['y'] + bbox['h']], outline='red', width=2)
-        draw.text((bbox['x'], bbox['y'] - 10), text, fill=(255, 0, 0))  # Drawing the text above the box
-    
+
+    for result in sentence_results:
+        bbox = result['bbox']  # Bounding box coordinates for the sentence
+        text = result['text']  # Detected sentence
+        # Draw the bounding box
+        draw.rectangle([bbox[0], bbox[1], bbox[2], bbox[3]], outline="red", width=3)
+        # Draw the text next to the bounding box
+        draw.text((bbox[0], bbox[1]), text, fill="red")  # Draw the detected text at the top-left of the bbox
+
     return img_draw
 
-def crop_and_preprocess(image, y1=345, y2=795):
-    img_array = np.array(image)
-    
-    # Convert to grayscale
-    gray = cv2.cvtColor(img_array, cv2.COLOR_RGB2GRAY)
-    
-    # Crop the image
-    cropped = gray[y1:y2, :]
-    
-    return Image.fromarray(cropped)
+# Function to determine if a word is Arabic (RTL) or English (LTR)
+def is_arabic(word):
+    return any("\u0600" <= char <= "\u06FF" for char in word)
 
-# Function to find texts near indicators
-def find_texts_near_indicator(results, indicator_text):
-    for result in results:
-        if indicator_text in result['text']:
-            return result['text']
-    return None
-    
-def run_tesseract(image):
-    # Convert image to OpenCV format
-    img_np = np.array(image)
-    
-    # Run Tesseract OCR
-    data = pytesseract.image_to_data(img_np, lang='ara', output_type=Output.DICT)
-    
-    results = []
+# Function to print pytesseract output for debugging
+def print_tesseract_data(data):
+    print("Tesseract Data:")
     for i in range(len(data['text'])):
-        text = data['text'][i].strip()
-        if text:  # Only consider non-empty text
-            bbox = {
-                'x': data['left'][i],
-                'y': data['top'][i],
-                'w': data['width'][i],
-                'h': data['height'][i]
-            }
-            results.append({'text': text, 'box': bbox})
-    
-    return results
+        print(f"Word: {data['text'][i]}, X: {data['left'][i]}, Y: {data['top'][i]}, W: {data['width'][i]}, H: {data['height'][i]}")
 
-# Set up Streamlit
-st.title("Arabic Text Extraction with Tesseract OCR")
+# Function to group words into sentences based on Y-threshold and X-threshold
+def get_sentences_with_bboxes(image, x_threshold=50, y_threshold=20):
+    # Get word-level data with bbox coordinates
+    data = pytesseract.image_to_data(image, lang='ara+eng', output_type=pytesseract.Output.DICT)
+    
+    # Debug: Print pytesseract data to check word extraction
+    print_tesseract_data(data)
+    
+    sentences = []
+    sentence_bbox = None
+    sentence_text = ''
+    
+    for i in range(len(data['text'])):
+        word = data['text'][i].strip()
+        if word:
+            (x, y, w, h) = (data['left'][i], data['top'][i], data['width'][i], data['height'][i])
+            is_rtl = is_arabic(word)  # Check if the current word is Arabic (RTL)
+
+            # Check if we should start a new sentence
+            if sentence_bbox is None:
+                # Initialize a new sentence and bbox
+                sentence_bbox = [x, y, x + w, y + h]
+                sentence_text = word
+            else:
+                # Calculate Y-distance and X-distance
+                y_distance = abs(y - sentence_bbox[1])  # Y distance between current word and the top of the sentence
+                if is_rtl:
+                    x_distance = sentence_bbox[0] - (x + w)  # For RTL: Distance from current word to left of sentence
+                else:
+                    x_distance = x - sentence_bbox[2]  # For LTR: Distance from current word to right of sentence
+                
+                # Group words if they are within the Y-threshold and X-threshold
+                if y_distance <= y_threshold and x_distance <= x_threshold:
+                    # Update bbox to include the new word
+                    sentence_bbox[0] = min(sentence_bbox[0], x)  # Update left edge for RTL
+                    sentence_bbox[2] = max(sentence_bbox[2], x + w)  # Update right edge for LTR
+                    sentence_bbox[3] = max(sentence_bbox[3], y + h)  # Update bottom edge
+                    sentence_text += ' ' + word  # Append word to sentence
+                else:
+                    # Save the previous sentence before starting a new one
+                    sentences.append({'text': sentence_text, 'bbox': sentence_bbox})
+                    # Start a new sentence
+                    sentence_bbox = [x, y, x + w, y + h]
+                    sentence_text = word
+            
+            # If this is the last word, save the current sentence
+            if i == len(data['text']) - 1:
+                sentences.append({'text': sentence_text, 'bbox': sentence_bbox})
+    
+    return sentences
+
+# Streamlit app
+st.title("Text Extraction with Sentence-Level Bounding Boxes (RTL and LTR)")
 
 # Upload an image
 uploaded_image = st.file_uploader("Upload an image", type=["png", "jpg", "jpeg"])
 
+# Process the image if uploaded
 if uploaded_image is not None:
+    # Display the uploaded image
     image = Image.open(uploaded_image)
     st.image(image, caption='Uploaded Image', use_column_width=True)
 
-    cropped_image = crop_and_preprocess(image)
-    st.image(cropped_image, caption='Cropped Image', use_column_width=True)
-    
     # Extract text button
-    if st.button("Extract Text with Tesseract"):
+    if st.button("Extract Text"):
         with st.spinner("Extracting text..."):
-            results = run_tesseract(cropped_image)
-            
-            # Extract fields based on indicators
-            extracted_data = []
-            indicator_texts = {
-                "Name of requester": "نعم انا",
-                "Nationality of requester": "الجنسية",
-                "National ID of requester": "رقم الإثبات",
-                "Phone number of requester": "رقم اتصال",
-                "Name of deceased": "اقر باني استلمت جثمان المتوفى",
-                "Nationality of deceased": "الجنسية",
-                "National ID of deceased": "رقم الإثبات"
-            }
+            # Get sentences with bounding boxes
+            sentence_results = get_sentences_with_bboxes(image, x_threshold=50, y_threshold=20)
 
-            # Extract text near indicators
-            for label, indicator in indicator_texts.items():
-                extracted_value = find_texts_near_indicator(results, indicator)
-                extracted_data.append((label, extracted_value))
+            # Display the extracted sentences
+            st.subheader("Extracted Sentences with BBoxes:")
+            for result in sentence_results:
+                st.text(f"Sentence: {result['text']}, BBox: {result['bbox']}")
             
-            # Create a DataFrame to display results
-            df = pd.DataFrame(extracted_data, columns=["Field", "Extracted Text"])
-            st.table(df)
-            
-            # Show bounding boxes on the image
-            img_with_bboxes = draw_bboxes(image, results)
+            # Draw bounding boxes on the image
+            img_with_bboxes = draw_bboxes(image, sentence_results)
+    
+            # Show image with bounding boxes
             st.image(img_with_bboxes, caption='Processed Image with Bounding Boxes', use_column_width=True)
