@@ -6,12 +6,12 @@ import numpy as np
 
 # Define fixed bounding boxes (x, y, width, height)
 FIXED_BBOXES = [
-    (50, 100, 300, 150),    # Example coordinates for bounding box 1
-    (400, 200, 250, 100),   # Example coordinates for bounding box 2
-    (700, 300, 300, 150),   # Example coordinates for bounding box 3
-    (50, 500, 400, 200),    # Example coordinates for bounding box 4
-    (500, 800, 350, 150),   # Example coordinates for bounding box 5
-    (800, 1000, 250, 150)   # Example coordinates for bounding box 6
+    (430, 650, 450, 50),    # من انا
+    (40, 650, 170, 80),   # الجنسية
+    (40, 730, 170, 80),   # رقم الاثبات
+    (440, 860, 440, 70),   # اقرر بانني استلمت
+    (40, 860, 170, 80),    # الجنسية
+    (40, 940, 170, 80),   # رقم الاثبات
 ]
 
 # Define a function to extract text from the specified bounding box
