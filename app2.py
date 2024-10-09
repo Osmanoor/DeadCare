@@ -20,7 +20,7 @@ def draw_bboxes(image, sentence_results):
 
 # Function to determine if a word is Arabic (RTL) or English (LTR)
 def is_arabic(word):
-    return true #any("\u0600" <= char <= "\u06FF" for char in word)
+    return True #any("\u0600" <= char <= "\u06FF" for char in word)
 
 # Function to print pytesseract output for debugging
 def print_tesseract_data(data):
