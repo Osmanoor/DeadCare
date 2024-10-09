@@ -6,44 +6,44 @@ import numpy as np
 
 # Define fixed bounding boxes (x, y, width, height) for the resized image
 FIXED_BBOXES = [
-    (50, 100, 300, 150),    # Example coordinates for bounding box 1
-    (400, 200, 250, 100),   # Example coordinates for bounding box 2
-    (700, 300, 300, 150),   # Example coordinates for bounding box 3
-    (50, 500, 400, 200),    # Example coordinates for bounding box 4
-    (500, 800, 350, 150),   # Example coordinates for bounding box 5
-    (800, 1000, 250, 150)   # Example coordinates for bounding box 6
+    (400, 140, 420, 70),    # من انا
+    (0, 140, 160, 70),   # الجنسية
+    (0, 210, 160, 50),   # رقم الاثبات
+    (0, 300, 160, 50),   # رقم التواصل
+    (400, 350, 420, 70),   # اقرر بانني استلمت
+    (0, 350, 160, 70),    # الجنسية
+    (0, 430, 160, 50),   # رقم الاثبات
 ]
 
-# Detect green horizontal lines
-def detect_green_lines(image):
-    # Convert the image to HSV (Hue, Saturation, Value) format
-    hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+# Function to detect gray horizontal lines
+def detect_gray_lines(image):
+    # Convert image to grayscale
+    gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-    # Define the green color range in HSV
-    lower_green = np.array([40, 40, 40])
-    upper_green = np.array([70, 255, 255])
+    # Apply Gaussian blur to reduce noise and improve edge detection
+    blurred_image = cv2.GaussianBlur(gray_image, (5, 5), 0)
 
-    # Create a mask for green regions
-    green_mask = cv2.inRange(hsv_image, lower_green, upper_green)
+    # Use Canny edge detection to find edges
+    edges = cv2.Canny(blurred_image, 50, 150)
 
-    # Find contours of the green regions
-    contours, _ = cv2.findContours(green_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # st.image(edges, caption="Masked Image", use_column_width=True)
 
-    # Filter for horizontal lines based on aspect ratio
-    lines = []
+    # Find contours in the edge-detected image
+    contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    # Filter contours based on width/height ratio to find horizontal lines
+    horizontal_lines = []
     for contour in contours:
         x, y, w, h = cv2.boundingRect(contour)
+        print(f"{x} - {y} - {w} - {h}")
         aspect_ratio = w / float(h)
-        if w > 600 and h < 10:  # Adjust thresholds to detect the green lines
-            lines.append((x, y, w, h))
+        if 600 <= w <= 1000 and 3 <= h <= 30:  # Adjust height range based on line thickness
+            horizontal_lines.append((x, y, w, h))
 
-    # Sort the lines by their y-coordinate to get top and bottom lines
-    lines = sorted(lines, key=lambda line: line[1])
-    
-    if len(lines) >= 2:
-        top_line = lines[0]
-        bottom_line = lines[1]
-        return top_line, bottom_line
+    # Sort lines by their y-coordinate (top to bottom)
+    if len(horizontal_lines) >= 2:
+        horizontal_lines = sorted(horizontal_lines, key=lambda line: line[1])
+        return horizontal_lines[0], horizontal_lines[1]  # Return top and bottom lines
     else:
         return None, None
 
@@ -71,7 +71,7 @@ if uploaded_image is not None:
     opencv_image = cv2.imdecode(file_bytes, 1)
 
     # Detect green horizontal lines
-    top_line, bottom_line = detect_green_lines(opencv_image)
+    top_line, bottom_line = detect_gray_lines(opencv_image)
     
     if top_line and bottom_line:
         # Crop the region between the two green lines
@@ -82,15 +82,14 @@ if uploaded_image is not None:
         # Resize the cropped image to 990 x 710
         resized_image = cv2.resize(cropped_image, (990, 710))
 
-        # Option to choose the language for OCR (English or Arabic)
-        lang_choice = st.selectbox("Choose language for OCR", options=['English', 'Arabic'])
-        lang_code = 'eng' if lang_choice == 'English' else 'ara'
+        st.image(resized_image, caption="Cropped Image", use_column_width=True)
+
 
         # Button to extract text
         if st.button("Extract Text"):
             extracted_texts = []
             for idx, bbox in enumerate(FIXED_BBOXES):
-                extracted_text = extract_text_from_bbox(resized_image, bbox, lang=lang_code)
+                extracted_text = extract_text_from_bbox(resized_image, bbox, lang='ara+eng')
                 extracted_texts.append(extracted_text)
                 st.write(f"Text in Bounding Box {idx+1}:")
                 st.write(extracted_text)
