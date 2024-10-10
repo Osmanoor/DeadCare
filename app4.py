@@ -13,12 +13,9 @@ load_dotenv()
 # Configure Gemini API key
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
-# Specify Tesseract OCR config (for Arabic language)
-custom_config = r'--oem 3 --psm 6 -l ara'
-
 def extract_text(image):
     """Extracts text from an image using Tesseract OCR."""
-    text = pytesseract.image_to_string(image, config=custom_config)
+    text = pytesseract.image_to_string(image, lang='ara+eng')
     return text
 
 def get_gemini_response(ocr_text, prompt):
