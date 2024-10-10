@@ -3,3 +3,5 @@ easyocr
 Pillow
 pytesseract
 opencv-python
+google-generativeai 
+google-cloud-vision
