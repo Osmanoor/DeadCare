@@ -4,18 +4,32 @@ import pytesseract
 import cv2
 import numpy as np
 
-# Define fixed bounding boxes (x, y, width, height) for an image with height 700 px
+# Define fixed bounding boxes (x, y, width, height) for the resized image
 FIXED_BBOXES = [
     (400, 140, 420, 70),    # من انا
-    (0, 140, 160, 70),   # الجنسية
-    (0, 210, 160, 50),   # رقم الاثبات
-    (0, 300, 160, 50),   # رقم التواصل
-    (400, 350, 420, 70),   # اقرر بانني استلمت
-    (0, 350, 160, 70),    # الجنسية
-    (0, 430, 160, 50),   # رقم الاثبات
+    (0, 140, 160, 70),      # الجنسية
+    (0, 210, 160, 50),      # رقم الاثبات
+    (0, 300, 160, 50),      # رقم التواصل
+    (400, 370, 410, 70),    # اقرر بانني استلمت
+    (0, 360, 160, 70),      # الجنسية
+    (0, 275, 160, 70),      # رقم الاثبات
 ]
 
-DEFAULT_HEIGHT = 700  # The original height that the fixed bounding boxes are based on
+# Function to adjust bounding boxes for the last three items
+def adjust_bboxes(bboxes, image_height):
+    adjusted_bboxes = []
+    
+    for i, bbox in enumerate(bboxes):
+        x, y, w, h = bbox
+        if i < len(bboxes) - 3:
+            # For the first four bounding boxes, keep them unchanged
+            adjusted_bboxes.append((x, y, w, h))
+        else:
+            # For the last three bounding boxes, make their y relative to the bottom
+            new_y = image_height - y
+            adjusted_bboxes.append((x, new_y, w, h))
+    
+    return adjusted_bboxes
 
 # Function to detect gray horizontal lines
 def detect_gray_lines(image):
@@ -23,7 +37,7 @@ def detect_gray_lines(image):
     blurred_image = cv2.GaussianBlur(gray_image, (5, 5), 0)
     edges = cv2.Canny(blurred_image, 50, 150)
     contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    
+
     horizontal_lines = []
     for contour in contours:
         x, y, w, h = cv2.boundingRect(contour)
@@ -36,12 +50,6 @@ def detect_gray_lines(image):
         return horizontal_lines[0], horizontal_lines[1]
     else:
         return None, None
-
-# Function to dynamically adjust bounding boxes based on image height
-def adjust_bboxes(bboxes, current_height):
-    scale_factor = current_height / DEFAULT_HEIGHT
-    adjusted_bboxes = [(x, int(y * scale_factor), w, h) for x, y, w, h in bboxes]
-    return adjusted_bboxes
 
 # Extract text from a bounding box
 def extract_text_from_bbox(image, bbox, lang='eng'):
@@ -60,38 +68,41 @@ uploaded_image = st.file_uploader("Choose an image", type=["png", "jpg", "jpeg"]
 
 if uploaded_image is not None:
     st.image(uploaded_image, caption="Uploaded Image", use_column_width=True)
-
     file_bytes = np.asarray(bytearray(uploaded_image.read()), dtype=np.uint8)
     opencv_image = cv2.imdecode(file_bytes, 1)
 
+    # Detect green horizontal lines
     top_line, bottom_line = detect_gray_lines(opencv_image)
     
     if top_line and bottom_line:
+        # Crop the region between the two green lines
         x, y_top, w, h_top = top_line
         _, y_bottom, _, h_bottom = bottom_line
         cropped_image = opencv_image[y_top + h_top:y_bottom, x:x+w]
-        
-        # Get the actual height of the cropped image
         cropped_height = cropped_image.shape[0]
+        cropped_width = cropped_image.shape[1]
+        # Resize the cropped image to 990 x 710
+        resized_image = cv2.resize(cropped_image, (cropped_width, 710))
 
-        # Adjust the bounding boxes based on the current height of the cropped image
-        adjusted_bboxes = adjust_bboxes(FIXED_BBOXES, cropped_height)
+        st.image(resized_image, caption="Cropped Image", use_column_width=True)
 
-        st.image(cropped_image, caption="Cropped Image", use_column_width=True)
+        # Adjust the bounding boxes for the resized image
+        adjusted_bboxes = adjust_bboxes(FIXED_BBOXES, 710)
 
+        # Button to extract text
         if st.button("Extract Text"):
             extracted_texts = []
             for idx, bbox in enumerate(adjusted_bboxes):
-                extracted_text = extract_text_from_bbox(cropped_image, bbox, lang='ara+eng')
+                extracted_text = extract_text_from_bbox(resized_image, bbox, lang='ara+eng')
                 extracted_texts.append(extracted_text)
                 st.write(f"Text in Bounding Box {idx+1}:")
                 st.write(extracted_text)
 
-                # Draw the bounding box on the cropped image for debugging
+                # Draw the bounding box on the resized image for debugging
                 x, y, w, h = bbox
-                cv2.rectangle(cropped_image, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                cv2.rectangle(resized_image, (x, y), (x + w, y + h), (0, 255, 0), 2)  # Green box for debugging
 
-            debug_image = Image.fromarray(cv2.cvtColor(cropped_image, cv2.COLOR_BGR2RGB))
+            debug_image = Image.fromarray(cv2.cvtColor(resized_image, cv2.COLOR_BGR2RGB))
             st.image(debug_image, caption="Image with Bounding Boxes", use_column_width=True)
     else:
         st.error("Could not detect the two green horizontal lines in the image.")
