@@ -25,7 +25,7 @@ def detect_gray_lines(image):
         return None, None
 
 # Directory containing the images
-image_dir = "Images"
+image_dir = "images"
 
 # List all jpg images in the folder
 image_files = [os.path.join(image_dir, file) for file in os.listdir(image_dir) if file.endswith(".jpg")]
