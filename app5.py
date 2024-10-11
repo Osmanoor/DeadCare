@@ -43,7 +43,10 @@ if len(image_files) > 0:
             x, y_top, w, h_top = top_line
             _, y_bottom, _, h_bottom = bottom_line
             cropped_image = image[y_top + h_top:y_bottom, x:x + w]
+            gray = cv2.cvtColor(cropped_image, cv2.COLOR_BGR2GRAY)
 
+            cropped_image = cv2.medianBlur(cropped_image, 3) 
+            
             # Convert to PIL image for pytesseract
             cropped_pil_image = Image.fromarray(cv2.cvtColor(cropped_image, cv2.COLOR_BGR2RGB))
 
