@@ -29,7 +29,7 @@ def print_tesseract_data(data):
         print(f"Word: {data['text'][i]}, X: {data['left'][i]}, Y: {data['top'][i]}, W: {data['width'][i]}, H: {data['height'][i]}")
 
 # Function to group words into sentences based on Y-threshold and X-threshold
-def get_sentences_with_bboxes(image, x_threshold=50, y_threshold=20):
+def get_sentences_with_bboxes(image, x_threshold=10, y_threshold=20):
     # Get word-level data with bbox coordinates
     data = pytesseract.image_to_data(image, lang='ara+eng', output_type=pytesseract.Output.DICT)
     
