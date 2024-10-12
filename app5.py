@@ -109,7 +109,8 @@ if len(image_files) > 0:
             cropped_pil_image = Image.fromarray(cv2.cvtColor(cropped_image, cv2.COLOR_BGR2RGB))
 
             # Apply pytesseract to detect text and bounding boxes
-            data = pytesseract.image_to_data(cropped_pil_image, output_type=pytesseract.Output.DICT, lang='ara+eng')
+            custom_config = f"--user-words custom_words.txt -c tessedit_char_whitelist=0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZأبتثجحخدذرزسشصضطظعغفقكلمنهوي"
+            data = pytesseract.image_to_data(cropped_pil_image, output_type=pytesseract.Output.DICT, config= custom_config, lang='ara+eng')
 
             # Group detected words into sentences
             sentences = group_into_sentences(data, x_threshold=20, y_threshold=20)
