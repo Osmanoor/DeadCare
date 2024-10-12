@@ -20,7 +20,8 @@ genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
 def extract_text(image):
     """Extracts text from an image using Tesseract OCR."""
-    text = pytesseract.image_to_string(image, lang='ara+eng')
+    config = '--oem 3 --psm 6'
+    text = pytesseract.image_to_string(image, lang='ara+eng' , config= config)
     return text
 
 def get_gemini_response(ocr_text, prompt):
@@ -33,24 +34,24 @@ def extract_fields(extracted_text):
     """Extracts specific fields from Arabic text using Gemini Pro."""
     prompt = f"""
     المستند التالي مكتوب باللغة العربية:
-    {extracted_text}
+    {cleaned_text}
 
-    من فضلك، قم باستخراج البيانات التالية من النص:
+    قم باستخراج المعلومات التالية بدقة:
     - اسم طالب الخدمة
-    - جنسية طالب الخدمة
+    - جنسية طالب الخدمة (إذا وجدت بوثيقة قومية، اذكر الجنسية والوثيقة معاً)
     - رقم الهوية الوطنية لطالب الخدمة
     - رقم هاتف طالب الخدمة
     - اسم المتوفي
-    - جنسية المتوفي
+    - جنسية المتوفي (إذا وجدت بوثيقة قومية، اذكر الجنسية والوثيقة معاً)
     - رقم الهوية الوطنية للمتوفي
 
-    يرجى تقديم البيانات المستخرجة بالتنسيق التالي:
+    يرجى تقديم البيانات في هذا التنسيق:
     اسم طالب الخدمة: [الاسم]
-    جنسية طالب الخدمة: [الجنسية]
+    جنسية طالب الخدمة: [الجنسية بوثيقة]
     رقم الهوية الوطنية لطالب الخدمة: [رقم الهوية]
     رقم هاتف طالب الخدمة: [رقم الهاتف]
     اسم المتوفي: [الاسم]
-    جنسية المتوفي: [الجنسية]
+    جنسية المتوفي: [الجنسية بوثيقة]
     رقم الهوية الوطنية للمتوفي: [رقم الهوية]
     """
     return get_gemini_response(extracted_text, prompt)
@@ -108,7 +109,6 @@ if uploaded_image is not None:
         st.image(cropped_image, caption='Cropped Image', use_column_width=True)
         cropped_image = cv2.medianBlur(cropped_image, 3) 
 
-        
         # Convert the cropped image to PIL format for OCR
         cropped_image_pil = Image.fromarray(cv2.cvtColor(cropped_image, cv2.COLOR_BGR2RGB))
 
