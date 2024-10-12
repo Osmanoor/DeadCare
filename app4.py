@@ -106,6 +106,8 @@ if uploaded_image is not None:
         x2, y2, w2, h2 = bottom_line
         cropped_image = image_np[y1+h1:y2, x1:x1+w1]
         st.image(cropped_image, caption='Cropped Image', use_column_width=True)
+        cropped_image = cv2.medianBlur(cropped_image, 3) 
+
         
         # Convert the cropped image to PIL format for OCR
         cropped_image_pil = Image.fromarray(cv2.cvtColor(cropped_image, cv2.COLOR_BGR2RGB))
