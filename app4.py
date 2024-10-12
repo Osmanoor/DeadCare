@@ -34,7 +34,7 @@ def extract_fields(extracted_text):
     """Extracts specific fields from Arabic text using Gemini Pro."""
     prompt = f"""
     المستند التالي مكتوب باللغة العربية:
-    {cleaned_text}
+    {extracted_text}
 
     قم باستخراج المعلومات التالية بدقة:
     - اسم طالب الخدمة
