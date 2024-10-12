@@ -5,6 +5,84 @@ from PIL import Image
 import streamlit as st
 import os
 
+predefined_text_variants = [['نعم انا'],
+                            ['اقر بانني', 'اقر باننى'],
+                            ['الجنسية'],
+                            ['رقم الاثبات'],
+                            ['رقم اتصال'],
+                            ['الجنسية'],
+                            ['رقم الاثبات']]
+
+def find_and_group_sentences_left_of_predefined(sentences, predefined_text_variants, max_x_threshold=50, y_threshold=10):
+    """
+    Finds and groups sentences to the left of predefined text with given X and Y thresholds.
+    
+    Parameters:
+    - sentences: List of detected sentence dictionaries with 'text' and 'box'.
+    - predefined_text_variants: List of lists, each containing strings of possible text variations.
+    - max_x_threshold: Maximum allowed X-distance to consider a sentence as "left".
+    - y_threshold: Maximum allowed Y-difference to consider a sentence on the same line.
+
+    Returns:
+    - grouped_sentences: List of grouped sentences matching the criteria.
+    """
+    grouped_sentences = []  # Store grouped sentences for each predefined text
+    used_sentences = set()  # Track sentences already used as predefined matches
+
+    # Loop through each predefined text variant (list of potential text matches)
+    for text_group in predefined_text_variants:
+        matching_predefined_sentence = None
+
+        # Find the predefined text's sentence box from extracted sentences
+        for sentence in sentences:
+            # Skip if this sentence is already used as a predefined match
+            if id(sentence) in used_sentences:
+                continue
+
+            if any(variant in sentence['text'] for variant in text_group):
+                matching_predefined_sentence = sentence
+                used_sentences.add(id(sentence))  # Mark this sentence as used
+                break  # Stop after finding the first match in this group
+
+        if not matching_predefined_sentence:
+            # Skip if no match was found for this group
+            continue
+
+        predefined_box = matching_predefined_sentence['box']
+        predefined_x = predefined_box['x']
+        predefined_y = predefined_box['y']
+
+        # Collect all sentences to the left of the predefined text within thresholds
+        collected_sentences = []
+        collected_text = ""
+
+        for sentence in sentences:
+            # Skip if the sentence was used as a predefined match
+            if id(sentence) in used_sentences:
+                continue
+
+            box = sentence['box']
+            sentence_x, sentence_y = box['x'], box['y']
+
+            if (
+                sentence_x + box['w'] <= predefined_x - max_x_threshold and  # Left of predefined text
+                abs(sentence_y - predefined_y) <= y_threshold  # Same line (vertical proximity)
+            ):
+                collected_sentences.append(sentence)
+                collected_text += sentence['text'] + " "  # Append text to the group
+
+        if collected_sentences:
+            # Remove trailing space from the collected text
+            collected_text = collected_text.strip()
+            # Store the grouped result
+            grouped_sentences.append({
+                'predefined_text': text_group,
+                'grouped_text': collected_text,
+                'collected_sentences': collected_sentences
+            })
+
+    return grouped_sentences
+    
 def detect_gray_lines(image):
     gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     blurred_image = cv2.GaussianBlur(gray_image, (5, 5), 0)
@@ -115,11 +193,20 @@ if len(image_files) > 0:
             # Group detected words into sentences
             sentences = group_into_sentences(data, x_threshold=20, y_threshold=20)
 
+            # Call the function with predefined text variants and extracted sentences
+            grouped_sentences = find_and_group_sentences_left_of_predefined(sentences, predefined_text_variants, max_x_threshold=200, y_threshold=10)
+            
+            # Display the grouped results
+            for group in grouped_sentences:
+                st.write(f"Predefined Text Group: {group['predefined_text']}")
+                st.write(f"Grouped Sentence: {group['grouped_text']}")
+                st.write("---")
+                        
             # Draw sentences on the cropped image
             processed_image = draw_sentences(cropped_image, sentences)
 
             # Display the cropped image with sentence-level bounding boxes
             st.image(processed_image, caption=f"Processed Image: {os.path.basename(img_file)}", use_column_width=True)
-
+            
 else:
     st.write("No images found in the 'Images' directory.")
