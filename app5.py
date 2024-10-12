@@ -13,15 +13,14 @@ predefined_text_variants = [['نعم انا'],
                             ['الجنسية'],
                             ['رقم الاثبات']]
 
-def find_and_group_sentences_left_of_predefined(sentences, predefined_text_variants, max_x_threshold=50, y_threshold=10):
+def find_and_group_sentences_left_of_predefined(sentences, predefined_text_variants, x_range=200, y_range=20):
     """
-    Finds and groups sentences to the left of predefined text with given X and Y thresholds.
-    
+    Finds and groups sentences to the left of predefined text with the specified conditions.
+
     Parameters:
     - sentences: List of detected sentence dictionaries with 'text' and 'box'.
     - predefined_text_variants: List of lists, each containing strings of possible text variations.
-    - max_x_threshold: Maximum allowed X-distance to consider a sentence as "left".
-    - y_threshold: Maximum allowed Y-difference to consider a sentence on the same line.
+    - x_range: Maximum X-pixel range allowed to the left of the predefined text.
 
     Returns:
     - grouped_sentences: List of grouped sentences matching the criteria.
@@ -29,52 +28,50 @@ def find_and_group_sentences_left_of_predefined(sentences, predefined_text_varia
     grouped_sentences = []  # Store grouped sentences for each predefined text
     used_sentences = set()  # Track sentences already used as predefined matches
 
-    # Loop through each predefined text variant (list of potential text matches)
     for text_group in predefined_text_variants:
         matching_predefined_sentence = None
 
         # Find the predefined text's sentence box from extracted sentences
         for sentence in sentences:
-            # Skip if this sentence is already used as a predefined match
             if id(sentence) in used_sentences:
                 continue
 
             if any(variant in sentence['text'] for variant in text_group):
                 matching_predefined_sentence = sentence
-                used_sentences.add(id(sentence))  # Mark this sentence as used
-                break  # Stop after finding the first match in this group
+                used_sentences.add(id(sentence))
+                break  # Stop after finding the first match for this group
 
         if not matching_predefined_sentence:
-            # Skip if no match was found for this group
-            continue
+            continue  # Skip if no predefined match found
 
-        predefined_box = matching_predefined_sentence['box']
-        predefined_x = predefined_box['x']
-        predefined_y = predefined_box['y']
+        indicator_box = matching_predefined_sentence['box']
+        indicator_y_top = indicator_box['y']
+        indicator_y_bottom = indicator_y_top + indicator_box['h']
 
-        # Collect all sentences to the left of the predefined text within thresholds
+        # Collect valid texts to the left of the predefined text
         collected_sentences = []
         collected_text = ""
 
         for sentence in sentences:
-            # Skip if the sentence was used as a predefined match
             if id(sentence) in used_sentences:
-                continue
+                continue  # Skip if already used as a predefined match
 
             box = sentence['box']
-            sentence_x, sentence_y = box['x'], box['y']
+            text_y_top = box['y']
+            text_y_bottom = text_y_top + box['h']
 
-            if (
-                sentence_x + box['w'] <= predefined_x - max_x_threshold and  # Left of predefined text
-                abs(sentence_y - predefined_y) <= y_threshold  # Same line (vertical proximity)
-            ):
+            # Check if the sentence is on the same line and within x-pixel range to the left
+            same_line = (
+                (text_y_top >= indicator_y_top - y_range) and
+                (text_y_bottom <= indicator_y_bottom + y_range)
+            )
+
+            if box['x'] < indicator_box['x'] and (indicator_box['x'] - box['x'] <= x_range) and same_line:
                 collected_sentences.append(sentence)
-                collected_text += sentence['text'] + " "  # Append text to the group
+                collected_text += sentence['text'] + " "
 
         if collected_sentences:
-            # Remove trailing space from the collected text
-            collected_text = collected_text.strip()
-            # Store the grouped result
+            collected_text = collected_text.strip()  # Remove trailing space
             grouped_sentences.append({
                 'predefined_text': text_group,
                 'grouped_text': collected_text,
