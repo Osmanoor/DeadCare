@@ -191,7 +191,7 @@ if len(image_files) > 0:
             sentences = group_into_sentences(data, x_threshold=20, y_threshold=20)
 
             # Call the function with predefined text variants and extracted sentences
-            grouped_sentences = find_and_group_sentences_left_of_predefined(sentences, predefined_text_variants, max_x_threshold=200, y_threshold=10)
+            grouped_sentences = find_and_group_sentences_left_of_predefined(sentences, predefined_text_variants)
             
             # Display the grouped results
             for group in grouped_sentences:
