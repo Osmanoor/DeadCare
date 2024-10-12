@@ -8,12 +8,13 @@ import os
 predefined_text_variants = [['نعم انا'],
                             ['اقر بانني', 'اقر باننى'],
                             ['الجنسية'],
-                            ['رقم الاثبات'],
-                            ['رقم اتصال'],
+                            ['رقم الاثبات','رقم الائبات','Jaliul'],
+                            ['رقم اتصال','Jlail','Juail'],
                             ['الجنسية'],
-                            ['رقم الاثبات']]
+                            ['رقم الاثبات','رقم الائبات','Jaliul'],
+                            ] 
 
-def find_and_group_sentences_left_of_predefined(sentences, predefined_text_variants, x_range=200, y_range=20):
+def find_and_group_sentences_left_of_predefined(sentences, predefined_text_variants, x_range=400, y_range=20):
     """
     Finds and groups sentences to the left of predefined text with the specified conditions.
 
@@ -63,7 +64,7 @@ def find_and_group_sentences_left_of_predefined(sentences, predefined_text_varia
             # Check if the sentence is on the same line and within x-pixel range to the left
             same_line = (
                 (text_y_top >= indicator_y_top - y_range) and
-                (text_y_bottom <= indicator_y_bottom + y_range)
+                (text_y_bottom <= indicator_y_bottom + y_range + 10)
             )
 
             if box['x'] < indicator_box['x'] and (indicator_box['x'] - box['x'] <= x_range) and same_line:
@@ -156,7 +157,7 @@ def draw_sentences(image, sentences):
         # Draw the bounding box for the sentence
         image = cv2.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 2)
         # Display the sentence text
-        st.write(f"Detected sentence: {sentence['text']}")
+        # st.write(f"Detected sentence: {sentence['text']}")
     return image
 
 # Streamlit code to upload image and process
@@ -179,7 +180,8 @@ if len(image_files) > 0:
             x, y_top, w, h_top = top_line
             _, y_bottom, _, h_bottom = bottom_line
             cropped_image = image[y_top + h_top:y_bottom, x:x + w]
-            cropped_image = cv2.medianBlur(cropped_image, 3) 
+            cropped_image = cv2.cvtColor(cropped_image, cv2.COLOR_BGR2GRAY)
+            cropped_image = cv2.GaussianBlur(cropped_image, (3, 3), 0)
             # Convert to PIL image for pytesseract
             cropped_pil_image = Image.fromarray(cv2.cvtColor(cropped_image, cv2.COLOR_BGR2RGB))
 
@@ -188,7 +190,7 @@ if len(image_files) > 0:
             data = pytesseract.image_to_data(cropped_pil_image, output_type=pytesseract.Output.DICT, config= custom_config, lang='ara+eng')
 
             # Group detected words into sentences
-            sentences = group_into_sentences(data, x_threshold=20, y_threshold=20)
+            sentences = group_into_sentences(data, x_threshold=10, y_threshold=20)
 
             # Call the function with predefined text variants and extracted sentences
             grouped_sentences = find_and_group_sentences_left_of_predefined(sentences, predefined_text_variants)
