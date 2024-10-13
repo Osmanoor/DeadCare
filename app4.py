@@ -161,14 +161,14 @@ if uploaded_image is not None:
     st.image(image, caption='Uploaded Image', use_column_width=True)
 
     # Detect green lines
-    top_line, bottom_line = detect_gray_lines(image_np)
+    # top_line, bottom_line = detect_gray_lines(image_np)
 
-    if top_line is not None and bottom_line is not None:
+    if True:
         # Crop the image between the lines
-        x1, y1, w1, h1 = top_line
-        x2, y2, w2, h2 = bottom_line
-        cropped_image = image_np[y1+h1:y2, x1:x1+w1]
-        # st.image(cropped_image, caption='Cropped Image', use_column_width=True)
+        # x1, y1, w1, h1 = top_line
+        # x2, y2, w2, h2 = bottom_line
+        cropped_image = image_np[500:image_np.shape[0]-400, :] #image_np[y1+h1:y2, x1:x1+w1]
+        st.image(cropped_image, caption='Cropped Image', use_column_width=True)
         cropped_image = cv2.cvtColor(cropped_image, cv2.COLOR_BGR2GRAY)
         cropped_image = cv2.GaussianBlur(cropped_image, (3, 3), 0)
 
