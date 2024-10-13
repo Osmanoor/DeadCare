@@ -35,11 +35,31 @@ def clean_extracted_text(text):
     
     return cleaned_text
 
-def extract_text(image):
+def extract_text_tesseract(image):
     """Extracts text from an image using Tesseract OCR."""
     config = '--user-words custom_words.txt --oem 3 --psm 6'
     text = pytesseract.image_to_string(image, lang='ara+eng' , config= config)
     return text
+
+def extract_text_vision(image):
+    """Extracts text from an image using Google Vision API."""
+    client = vision.ImageAnnotatorClient()
+    # Convert PIL image to bytes
+    img_byte_arr = io.BytesIO()
+    image.save(img_byte_arr, format='PNG')
+    content = img_byte_arr.getvalue()
+    
+    # Create an Image object for Vision API
+    image = vision.Image(content=content)
+    
+    # Perform text detection
+    response = client.text_detection(image=image)
+    texts = response.text_annotations
+    
+    if response.error.message:
+        raise Exception(f"Google Vision API error: {response.error.message}")
+    
+    return texts[0].description if texts else ""
 
 def get_gemini_response(ocr_text, prompt):
   """Processes OCR text with Gemini Pro and returns the generated text."""
@@ -176,7 +196,7 @@ if uploaded_image is not None:
         cropped_image_pil = Image.fromarray(cv2.cvtColor(cropped_image, cv2.COLOR_BGR2RGB))
 
         # Extract text using Tesseract on the cropped image
-        extracted_text = extract_text(cropped_image_pil)
+        extracted_text = extract_text_vision(cropped_image_pil)
         # st.subheader("Extracted Text:")
         # st.text(extracted_text)
 
