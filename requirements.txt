@@ -5,3 +5,4 @@ pytesseract
 opencv-python
 google-generativeai 
 google-cloud-vision
+python-dotenv
