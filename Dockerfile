@@ -2,7 +2,10 @@ FROM python:3.9-slim
 
 # Install Tesseract and language packs
 RUN apt-get update && apt-get install -y \
-    libgl1-mesa-glx 
+    libglib2.0-0 \
+    libgl1-mesa-glx \
+    libgthread-2.0-0 \
+    && apt-get clean 
 
 # Install required Python packages
 COPY requirements.txt .
