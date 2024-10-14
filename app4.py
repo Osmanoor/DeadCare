@@ -14,7 +14,7 @@ from google.cloud import vision
 
 # Load environment variables
 load_dotenv()
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "deadcarereports-abf0d032492d.json"
+# os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "deadcarereports-abf0d032492d.json"
 # Configure Gemini API key
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
