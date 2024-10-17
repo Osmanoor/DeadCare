@@ -36,7 +36,7 @@ def extract_text_vision(base64_image):
     cropped_image = cv2.GaussianBlur(cropped_image, (3, 3), 0)
     cropped_image_pil = Image.fromarray(cv2.cvtColor(cropped_image, cv2.COLOR_BGR2RGB))
     img_byte_arr = io.BytesIO()
-    pil_image.save(img_byte_arr, format='PNG')
+    image.save(img_byte_arr, format='PNG')
     content = img_byte_arr.getvalue()
 
     client = vision.ImageAnnotatorClient()
@@ -48,7 +48,10 @@ def extract_text_vision(base64_image):
     if response.error.message:
         raise Exception(f"Google Vision API error: {response.error.message}")
 
-    return texts[0].description if texts else ""
+    text =  texts[0].description if texts else ""
+    result = extract_fields(text)
+    
+    return result
 
 def get_gemini_response(ocr_text, prompt):
   model = genai.GenerativeModel('gemini-1.5-flash')
