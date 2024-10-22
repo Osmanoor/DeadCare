@@ -15,6 +15,29 @@ app = FastAPI()
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "conf/deadcarereports.json"
 genai.configure(api_key="AIzaSyAGTRCscX-fLYdBJnj_kbODyOW6ljKgD7g")
 
+def detect_gray_lines(image):
+    gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    blurred_image = cv2.GaussianBlur(gray_image, (5, 5), 0)
+
+    edges = cv2.Canny(blurred_image, 50, 150)
+
+    contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    horizontal_lines = []
+    for contour in contours:
+        x, y, w, h = cv2.boundingRect(contour)
+        aspect_ratio = w / float(h)
+        if 600 <= w <= 1000 and 3 <= h <= 30:  
+            horizontal_lines.append((x, y, w, h))
+
+    if len(horizontal_lines) >= 2:
+        horizontal_lines = sorted(horizontal_lines, key=lambda line: line[1])
+        return horizontal_lines[0], horizontal_lines[1]  
+    else:
+        return None, None
+
+
 class ImageData(BaseModel):
     image_base64: str
 
@@ -23,13 +46,19 @@ def extract_text_vision(base64_image):
     image_bytes = base64.b64decode(base64_image)
     image = Image.open(io.BytesIO(image_bytes))
     image_np = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
-
-    cropped_image = image_np[500:image_np.shape[0] - 400, :]
+    top_line, bottom_line = detect_gray_lines(image_np)
+    if top_line != None and bottom_line != None:
+        x1, y1, w1, h1 = top_line
+        x2, y2, w2, h2 = bottom_line
+        cropped_image = image_np[y1+h1:y2, x1:x1+w1]
+    else:
+        cropped_image = image_np[500:image_np.shape[0] - 400, :]
     cropped_image = cv2.cvtColor(cropped_image, cv2.COLOR_BGR2GRAY)
     cropped_image = cv2.GaussianBlur(cropped_image, (3, 3), 0)
+    
     img_byte_arr = io.BytesIO()
     Image.fromarray(cv2.cvtColor(cropped_image, cv2.COLOR_BGR2RGB)).save(img_byte_arr, format='PNG')
-
+    
     client = vision.ImageAnnotatorClient()
     image = vision.Image(content=img_byte_arr.getvalue())
     response = client.text_detection(image=image)
